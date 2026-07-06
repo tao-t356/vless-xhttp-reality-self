@@ -65,7 +65,7 @@ main() {
   require_root
   validate_release_inputs
 
-  local arch asset tmp archive checksum_url checksum_file legacy_helper
+  local arch asset tmp archive checksum_url checksum_file legacy_helper tool tool_name
   arch="$(detect_arch)"
   asset="${APP_NAME}_linux_${arch}.tar.gz"
   tmp="$(mktemp -d)"
@@ -89,13 +89,14 @@ main() {
   fi
 
   install -d -m 0755 "$INSTALL_DIR"
-  install -m 0755 "${tmp}/bin/${APP_NAME}" "${INSTALL_DIR}/${APP_NAME}"
-  if [[ -x "${tmp}/bin/${APP_NAME}-egress-pool" ]]; then
-    install -m 0755 "${tmp}/bin/${APP_NAME}-egress-pool" "${INSTALL_DIR}/${APP_NAME}-egress-pool"
-  fi
+  for tool in "${tmp}/bin/"*; do
+    [[ -f "$tool" && -x "$tool" ]] || continue
+    tool_name="$(basename -- "$tool")"
+    install -m 0755 "$tool" "${INSTALL_DIR}/${tool_name}"
+  done
+
   legacy_helper="${APP_NAME}-$(printf '\166\160\156\147\141\164\145\055\164\157\160\062\060')"
   if [[ -x "${tmp}/bin/${legacy_helper}" ]]; then
-    install -m 0755 "${tmp}/bin/${legacy_helper}" "${INSTALL_DIR}/${legacy_helper}"
     if [[ ! -x "${INSTALL_DIR}/${APP_NAME}-egress-pool" ]]; then
       install -m 0755 "${tmp}/bin/${legacy_helper}" "${INSTALL_DIR}/${APP_NAME}-egress-pool"
     fi
