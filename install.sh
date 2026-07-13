@@ -103,6 +103,11 @@ validate_release_inputs() {
     red "VERSION / RELEASE_VERSION 格式错误: ${RELEASE_VERSION}"
     exit 1
   fi
+  if [[ "$RELEASE_VERSION" != "latest" && "$RELEASE_REPO" == "$PUBLIC_REPO" ]]; then
+    red "默认公开仓库只从 main/dist 发布资产，不创建 GitHub Release。"
+    red "固定版本安装必须显式指定另一个实际发布 Release 资产的 RELEASE_REPO。"
+    exit 1
+  fi
   if [[ ! "$ASSET_BASE" =~ ^https:// ]]; then
     red "ASSET_BASE 必须使用 HTTPS: ${ASSET_BASE}"
     exit 1

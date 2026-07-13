@@ -19,14 +19,7 @@ RELEASE_REPO=your-name/your-binary-release-repo \
 bash <(curl -fsSL https://raw.githubusercontent.com/tao-t356/vless-xhttp-reality-self/main/install.sh)
 ```
 
-To install a fixed version, the matching GitHub Release tag and assets must exist. For releases published in the default public repository:
-
-```bash
-VERSION=v0.20.0 \
-bash <(curl -fsSL https://raw.githubusercontent.com/tao-t356/vless-xhttp-reality-self/main/install.sh)
-```
-
-For a separate binary Release repository:
+The default public repository intentionally does not create GitHub Releases; it publishes only the current assets under `main/dist`. Fixed-version installation is available only when an explicitly configured separate repository has the matching Release tag and assets:
 
 ```bash
 RELEASE_REPO=your-name/your-binary-release-repo \
