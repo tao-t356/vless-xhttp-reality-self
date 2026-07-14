@@ -22,7 +22,8 @@ ENTRY_CURRENT_PENDING=""
 ENTRY_CURRENT_BACKUP=""
 ENTRY_CURRENT_HAD_OLD=0
 ENTRY_CURRENT_CHANGED=0
-ENTRY_NAMES=("$APP_NAME" "${APP_NAME}-egress-pool" "${APP_NAME}-install-ip" facker668)
+ENTRY_NAMES=("$APP_NAME" "${APP_NAME}-egress-pool")
+OBSOLETE_ENTRY_NAMES=("${APP_NAME}-install-ip" facker668)
 ENTRY_HAD_OLD=()
 ENTRY_CHANGED=()
 ENTRY_PENDING=()
@@ -139,8 +140,6 @@ validate_archive_members() {
     VERSION
     "bin/${APP_NAME}"
     "bin/${APP_NAME}-egress-pool"
-    "bin/${APP_NAME}-install-ip"
-    bin/facker668
   )
   local -A seen=()
 
@@ -155,7 +154,7 @@ validate_archive_members() {
 
   while IFS= read -r member; do
     case "$member" in
-      bin/|VERSION|LICENSE|"bin/${APP_NAME}"|"bin/${APP_NAME}-egress-pool"|"bin/${APP_NAME}-install-ip"|bin/facker668)
+      bin/|VERSION|LICENSE|"bin/${APP_NAME}"|"bin/${APP_NAME}-egress-pool")
         ;;
       *)
         red "发布包包含未授权路径: ${member}"
@@ -188,7 +187,7 @@ validate_archive_members() {
           return 1
         }
         ;;
-      VERSION|LICENSE|"bin/${APP_NAME}"|"bin/${APP_NAME}-egress-pool"|"bin/${APP_NAME}-install-ip"|bin/facker668)
+      VERSION|LICENSE|"bin/${APP_NAME}"|"bin/${APP_NAME}-egress-pool")
         [[ "$mode" == -* && "$size" =~ ^[0-9]+$ ]] || {
           rm -f "$names_file" "$verbose_file"
           red "发布包包含非常规文件: ${member}"
@@ -239,7 +238,7 @@ version_dir_matches() {
       bin)
         [[ -d "$entry" && ! -L "$entry" ]] || return 1
         ;;
-      VERSION|LICENSE|.archive-sha256|"bin/${APP_NAME}"|"bin/${APP_NAME}-egress-pool"|"bin/${APP_NAME}-install-ip"|bin/facker668)
+      VERSION|LICENSE|.archive-sha256|"bin/${APP_NAME}"|"bin/${APP_NAME}-egress-pool")
         [[ -f "$entry" && ! -L "$entry" ]] || return 1
         ;;
       *)
@@ -411,6 +410,7 @@ main() {
 
   local arch asset tmp archive checksum_url checksum_file expected actual requested_version
   local version final_dir new_dir tool_name github_token version_action version_backup
+  local obsolete_path obsolete_target
   arch="$(detect_arch)"
   asset="${APP_NAME}_linux_${arch}.tar.gz"
   tmp="$(mktemp -d)"
@@ -452,7 +452,7 @@ main() {
 
   validate_archive_members "$archive"
   tar -xzf "$archive" --no-same-owner --no-same-permissions -C "$tmp"
-  for tool_name in "$APP_NAME" "${APP_NAME}-egress-pool" "${APP_NAME}-install-ip" facker668; do
+  for tool_name in "${ENTRY_NAMES[@]}"; do
     [[ -f "${tmp}/bin/${tool_name}" && ! -L "${tmp}/bin/${tool_name}" ]] || {
       red "发布包缺少普通文件 bin/${tool_name}"
       exit 1
@@ -478,7 +478,7 @@ main() {
   [[ ! -e "$new_dir" && ! -L "$new_dir" ]] || { red "安装暂存目录已存在: ${new_dir}"; exit 1; }
   PENDING_INSTALL_DIR="$new_dir"
   install -d -m 0755 "${new_dir}/bin"
-  for tool_name in "$APP_NAME" "${APP_NAME}-egress-pool" "${APP_NAME}-install-ip" facker668; do
+  for tool_name in "${ENTRY_NAMES[@]}"; do
     install -m 0755 "${tmp}/bin/${tool_name}" "${new_dir}/bin/${tool_name}"
   done
   install -m 0644 "${tmp}/VERSION" "${new_dir}/VERSION"
@@ -554,6 +554,15 @@ main() {
     rm -rf -- "$VERSION_BACKUP_DIR" || yellow "无法删除版本修复备份: ${VERSION_BACKUP_DIR}"
   fi
   cleanup_entrypoint_artifacts
+  for tool_name in "${OBSOLETE_ENTRY_NAMES[@]}"; do
+    obsolete_path="${INSTALL_DIR}/${tool_name}"
+    if [[ -L "$obsolete_path" ]]; then
+      obsolete_target="$(readlink -- "$obsolete_path" 2>/dev/null || true)"
+      case "$obsolete_target" in
+        "${INSTALL_ROOT}"/*) rm -f -- "$obsolete_path" ;;
+      esac
+    fi
+  done
   VERSION_CHANGE_KIND=""
   VERSION_FINAL_DIR=""
   VERSION_BACKUP_DIR=""
