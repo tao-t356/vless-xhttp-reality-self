@@ -23,7 +23,7 @@ The default public repository intentionally does not create GitHub Releases; it 
 
 ```bash
 RELEASE_REPO=your-name/your-binary-release-repo \
-VERSION=v0.20.0 \
+VERSION=v0.20.1 \
 bash <(curl -fsSL https://raw.githubusercontent.com/tao-t356/vless-xhttp-reality-self/main/install.sh)
 ```
 
