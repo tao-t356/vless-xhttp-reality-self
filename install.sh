@@ -120,16 +120,24 @@ validate_release_inputs() {
 }
 
 curl_download() {
-  local url="$1" output="$2"
+  local url="$1" output="$2" effective_url="$1" cache_buster
   local headers=()
   if [[ -n "$AUTH_HEADER_FILE" && ( "$url" == https://github.com/* \
     || "$url" == https://api.github.com/* || "$url" == https://raw.githubusercontent.com/* ) ]]; then
     [[ -r "$AUTH_HEADER_FILE" ]] || { red "GitHub 认证 header 文件不可读"; return 1; }
     headers=(-H "@${AUTH_HEADER_FILE}")
   fi
+  if [[ "$RELEASE_VERSION" == "latest" && "$url" == https://raw.githubusercontent.com/* ]]; then
+    cache_buster="$(date +%s 2>/dev/null || printf '%s' "$$")-$$-${RANDOM:-0}"
+    if [[ "$effective_url" == *\?* ]]; then
+      effective_url="${effective_url}&vxrs_cache=${cache_buster}"
+    else
+      effective_url="${effective_url}?vxrs_cache=${cache_buster}"
+    fi
+  fi
   curl -fsSL --proto '=https' --proto-redir '=https' --tlsv1.2 \
     --connect-timeout 15 --retry 3 --retry-delay 2 --max-filesize 268435456 \
-    "${headers[@]}" "$url" -o "$output" || return $?
+    "${headers[@]}" "$effective_url" -o "$output" || return $?
 }
 
 validate_archive_members() {
