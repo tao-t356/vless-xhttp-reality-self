@@ -212,7 +212,7 @@ validate_archive_members() {
 }
 
 version_dir_matches() {
-  local installed="$1" expected="$2" entry relative name
+  local installed="$1" expected="$2" check_archive="${3:-1}" entry relative name
   [[ -d "$installed" && ! -L "$installed" ]] || return 1
   [[ -d "${installed}/bin" && ! -L "${installed}/bin" ]] || return 1
 
@@ -223,8 +223,10 @@ version_dir_matches() {
   done
   [[ -f "${installed}/VERSION" && ! -L "${installed}/VERSION" ]] || return 1
   cmp -s -- "${installed}/VERSION" "${expected}/VERSION" || return 1
-  [[ -f "${installed}/.archive-sha256" && ! -L "${installed}/.archive-sha256" ]] || return 1
-  cmp -s -- "${installed}/.archive-sha256" "${expected}/.archive-sha256" || return 1
+  if [[ "$check_archive" == "1" ]]; then
+    [[ -f "${installed}/.archive-sha256" && ! -L "${installed}/.archive-sha256" ]] || return 1
+    cmp -s -- "${installed}/.archive-sha256" "${expected}/.archive-sha256" || return 1
+  fi
   if [[ -f "${expected}/LICENSE" ]]; then
     [[ -f "${installed}/LICENSE" && ! -L "${installed}/LICENSE" ]] || return 1
     cmp -s -- "${installed}/LICENSE" "${expected}/LICENSE" || return 1
@@ -489,13 +491,23 @@ main() {
   version_action=create
   version_backup="${INSTALL_ROOT}/.${version}.old.$$"
   if [[ -e "$final_dir" || -L "$final_dir" ]]; then
-    if [[ ! -d "$final_dir" || -L "$final_dir" \
-      || ! -f "${final_dir}/.archive-sha256" || -L "${final_dir}/.archive-sha256" \
-      || "$(tr -d '\r\n' < "${final_dir}/.archive-sha256")" != "$actual" ]]; then
+    if [[ ! -d "$final_dir" || -L "$final_dir" ]]; then
       red "版本目录 ${final_dir} 已存在但内容标识不同；拒绝覆盖不可变版本，请发布新版本号。"
       exit 1
     fi
-    if version_dir_matches "$final_dir" "$new_dir"; then
+    if [[ ! -e "${final_dir}/.archive-sha256" ]]; then
+      if version_dir_matches "$final_dir" "$new_dir" 0; then
+        version_action=repair
+        yellow "检测到 ${final_dir} 是旧版无发布指纹目录，将补齐已验证发布包。"
+      else
+        red "版本目录 ${final_dir} 缺少发布指纹且内容不匹配；请发布新版本号。"
+        exit 1
+      fi
+    elif [[ ! -f "${final_dir}/.archive-sha256" || -L "${final_dir}/.archive-sha256" \
+      || "$(tr -d '\r\n' < "${final_dir}/.archive-sha256")" != "$actual" ]]; then
+      red "版本目录 ${final_dir} 已存在但内容标识不同；拒绝覆盖不可变版本，请发布新版本号。"
+      exit 1
+    elif version_dir_matches "$final_dir" "$new_dir"; then
       version_action=matched
     else
       [[ ! -e "$version_backup" && ! -L "$version_backup" ]] \
