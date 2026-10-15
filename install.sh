@@ -141,7 +141,7 @@ curl_download() {
 }
 
 validate_archive_members() {
-  local archive="$1" member mode owner size date_field time_field remainder
+  local archive="$1" member mode size
   local names_file verbose_file required total_size=0
   local -a required_members=(
     bin/
@@ -186,7 +186,7 @@ validate_archive_members() {
     fi
   done
 
-  while read -r mode owner size date_field time_field member remainder; do
+  while read -r mode _owner size _date _time member _rest; do
     case "$member" in
       bin/)
         [[ "$mode" == d* ]] || {
