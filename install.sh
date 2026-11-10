@@ -414,8 +414,36 @@ rollback_version_change() {
   (( failed == 0 ))
 }
 
+run_fixed_argo() (
+  local stage installer_url digest
+  installer_url=https://raw.githubusercontent.com/yzzkk/hy2plus-install/e42dfd4bd17a0745db88d57024b60ae64f674668/install-fixed-argo.sh
+  digest=1369ad5083661c3849a1a6ea70da601faa8bda500c534f93b09e42c6d0c1bd58
+  umask 077
+  stage=$(mktemp -d)
+  trap 'unlink "$stage/argo.sh" 2>/dev/null || true; rmdir "$stage"' EXIT
+  curl_download "$installer_url" "$stage/argo.sh"
+  printf '%s  %s\n' "$digest" "$stage/argo.sh" | sha256sum -c -
+  env -u GITHUB_TOKEN -u GH_TOKEN -u TOKEN bash "$stage/argo.sh" "$@"
+)
+
 main() {
   require_root
+  if [[ ${1:-} == --fixed-argo ]]; then
+    shift
+    run_fixed_argo "$@"
+    return
+  fi
+  if [[ $# == 0 && -t 0 ]]; then
+    local install_choice
+    printf '%s\n' '1) VLESS + XHTTP + REALITY 原有安装菜单' \
+      '2) 安装固定 Argo 隧道（VLESS + WebSocket + TLS）'
+    read -rp '请选择 [1]：' install_choice
+    case "${install_choice:-1}" in
+      1) ;;
+      2) run_fixed_argo; return ;;
+      *) red '无效选项。'; return 2 ;;
+    esac
+  fi
   validate_release_inputs
 
   local arch asset tmp archive checksum_url checksum_file expected actual requested_version
